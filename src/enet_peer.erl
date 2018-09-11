@@ -569,6 +569,7 @@ connected(cast, {incoming_command, {H, C = #reliable{}}}, S) ->
     %% TODO: Describe.
     %% - Reset the receive-timer
     %%
+    erlang:display(["got message:", C]),
     #command_header{ channel_id = ChannelID } = H,
     #state{ channels = #{ ChannelID := Channel } } = S,
     ok = enet_channel:recv_reliable(Channel, {H, C}),

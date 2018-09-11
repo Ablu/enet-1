@@ -72,6 +72,7 @@ send_unreliable(Channel, Data) ->
 
 recv_reliable(Channel, {H, C}) ->
     %% Peer -> Channel -> Owner
+    erlang:display(["reliable:", {Channel, {recv_reliable, {H, C}}}]),
     Channel ! {recv_reliable, {H, C}},
     ok.
 
@@ -99,6 +100,7 @@ init(ID, Peer, Owner, Parent) ->
 
 
 loop(S = #state{ id = ID, peer = Peer, owner = Owner }) ->
+    erlang:display(["loop", self()]),
     receive
 
         {system, From, Request} ->
@@ -139,6 +141,7 @@ loop(S = #state{ id = ID, peer = Peer, owner = Owner }) ->
            #command_header{ reliable_sequence_number = N },
            C = #reliable{}
           }} when N =:= S#state.incoming_reliable_sequence_number ->
+            erlang:display(["in channel:", {Owner, {enet, ID, C}}]),
             Owner ! {enet, ID, C},
             NewS = S#state{ incoming_reliable_sequence_number = N + 1 },
             loop(NewS);
