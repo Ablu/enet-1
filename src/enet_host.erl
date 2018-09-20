@@ -39,7 +39,8 @@
           peer_sup,
           peer_table,
           compress_fun,
-          decompress_fun
+          decompress_fun,
+          connect_fun
         }).
 
 -define(NULL_PEER_ID, ?MAX_PEER_ID).
@@ -48,9 +49,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-start_link(Owner, Port, PeerSup) ->
-    start_link(Owner, Port, PeerSup, []).
 
 start_link(Owner, Port, PeerSup, Options) ->
     gen_server:start_link(?MODULE, {Owner, Port, PeerSup, Options}, []).
@@ -136,12 +134,14 @@ init({Owner, Port, PeerSup, Options}) ->
                      {active, true},
                      {reuseaddr, true}
                     ],
+    ConnectFun = lists:keyfind(connect_fun, 1, Options),
     {ok, Socket} = gen_udp:open(Port, SocketOptions),
     {ok, #state{
             owner = Owner,
             socket = Socket,
             peer_sup = PeerSup,
-            peer_table = enet_peer_table:new(PeerLimit)
+            peer_table = enet_peer_table:new(PeerLimit),
+            connect_fun = ConnectFun
            }}.
 
 
@@ -154,14 +154,16 @@ handle_call({connect, IP, Port, Channels, Owner}, _From, S) ->
     %%
     #state{
        peer_table = Table,
-       peer_sup = Sup
+       peer_sup = Sup,
+       connect_fun = ConnectFun
       } = S,
     Reply =
         case enet_peer_table:insert(Table, IP, Port) of
             {error, table_full} -> {error, reached_peer_limit};
             {ok, PeerID}        ->
+                OwnerPid = ConnectFun(IP, Port),
                 start_peer(
-                  Table, Sup, local, Channels, PeerID, IP, Port, Owner)
+                  Table, Sup, local, Channels, PeerID, IP, Port, OwnerPid);
         end,
     {reply, Reply, S};
 
